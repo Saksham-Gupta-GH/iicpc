@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: iicpc-backend
+    ports:
+      - "5000:5000"
+    volumes:
+      # Mount Docker socket to allow backend orchestrator to build & run contestant containers dynamically
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Mount SQLite / JSON persistence file
+      - backend-data:/app/backend
+    networks:
+      - iicpc-net
+    environment:
+      - PORT=5000
+      - NODE_ENV=production
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    container_name: iicpc-frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - iicpc-net
+
+networks:
+  iicpc-net:
+    driver: bridge
+
+volumes:
+  backend-data:

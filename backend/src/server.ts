@@ -1,0 +1,246 @@
+import express, { Request, Response } from 'express';
+import * as http from 'http';
+import WebSocket from 'ws';
+import cors from 'cors';
+import * as path from 'path';
+import { TelemetryIngester } from './telemetry';
+import { ContestantOrchestrator } from './orchestrator';
+import { LoadGenerator } from '../../bot-fleet/src/generator';
+import { PlatformDatabase, BenchmarkRun } from './database';
+
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+const server = http.createServer(app);
+const wss = new WebSocket.Server({ server });
+
+// Shared Platform Instances
+const db = new PlatformDatabase();
+const telemetry = new TelemetryIngester();
+const sandbox = new ContestantOrchestrator(telemetry);
+const generator = new LoadGenerator(telemetry);
+
+let activeRunId: string | null = null;
+let activeRunName: string = '';
+let activeRunLang: string = '';
+let activeRunTimer: NodeJS.Timeout | null = null;
+let activeRunDuration = 30;
+
+// WS Clients (using 'any' to avoid browser DOM vs Node ws type namespace collisions)
+const wsClients = new Set<any>();
+
+wss.on('connection', (ws: any) => {
+  wsClients.add(ws);
+  
+  // Stream current database state on connect
+  ws.send(JSON.stringify({
+    type: 'INIT',
+    payload: {
+      leaderboard: db.getLeaderboard(),
+      history: db.getRuns(),
+      isRunning: sandbox.isRunning
+    }
+  }));
+
+  ws.on('close', () => wsClients.delete(ws));
+});
+
+function broadcastToClients(type: string, payload: any) {
+  const msg = JSON.stringify({ type, payload });
+  for (const client of wsClients) {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(msg);
+    }
+  }
+}
+
+// REST API Endpoints
+
+// GET /api/leaderboard
+app.get('/api/leaderboard', (req: Request, res: Response) => {
+  res.json(db.getLeaderboard());
+});
+
+// GET /api/history
+app.get('/api/history', (req: Request, res: Response) => {
+  res.json(db.getRuns());
+});
+
+// POST /api/benchmark/start
+app.post('/api/benchmark/start', async (req: Request, res: Response) => {
+  const { contestantName, engineType, duration, botCount, botRate } = req.body;
+
+  if (sandbox.isRunning) {
+    return res.status(400).json({ error: 'A stress test is already running!' });
+  }
+
+  // Validate parameters
+  const name = (contestantName || 'Anonymous').trim();
+  const type = engineType || 'js'; // js, go, rust, cpp
+  const runSec = parseInt(duration) || 30;
+  const bots = parseInt(botCount) || 10;
+  const rate = parseInt(botRate) || 50;
+
+  activeRunId = `run-${Math.random().toString(36).substring(2, 10)}-${Date.now()}`;
+  activeRunName = name;
+  activeRunLang = type;
+  activeRunDuration = runSec;
+
+  res.json({ message: 'Initializing stress test sandbox environment...', runId: activeRunId });
+
+  broadcastToClients('STATUS_CHANGE', { isRunning: true, runId: activeRunId, contestantName: name, engineType: type });
+
+  // Resolve contestant source directory path
+  let submissionDir = '';
+  if (type === 'go') {
+    submissionDir = path.resolve(__dirname, '..', '..', 'contestant-examples', 'go');
+  } else if (type === 'rust') {
+    submissionDir = path.resolve(__dirname, '..', '..', 'contestant-examples', 'rust');
+  } else if (type === 'cpp') {
+    submissionDir = path.resolve(__dirname, '..', '..', 'contestant-examples', 'cpp');
+  } else {
+    submissionDir = path.resolve(__dirname, '..', '..', 'contestant-examples', 'js');
+  }
+
+  telemetry.reset();
+
+  const logger = (log: string) => {
+    console.log(log.trim());
+    broadcastToClients('LOG', { text: log });
+  };
+
+  logger(`[Platform] Booting matching engine sandbox [${type.toUpperCase()}] for contestant "${name}"...\n`);
+
+  try {
+    // 1. Start Docker Container Sandbox
+    const sandboxStarted = await sandbox.startSandbox(submissionDir, '0.5', '256m', logger);
+    if (!sandboxStarted) {
+      throw new Error('Sandbox orchestration container failed to spin up.');
+    }
+
+    logger(`[Platform] Sandbox is online. Deploying Bot Fleet of ${bots} bots...\n`);
+
+    // 2. Start Bot Load Generator
+    generator.start(bots, rate);
+
+    logger(`[Platform] Stress test active. Streaming telemetry for ${runSec} seconds...\n`);
+
+    // 3. Periodic real-time statistics broadcastery (every 250ms)
+    let statsInterval = setInterval(() => {
+      if (!sandbox.isRunning) {
+        clearInterval(statsInterval);
+        return;
+      }
+      const stats = telemetry.getStats();
+      broadcastToClients('STATS', {
+        ...stats,
+        activeBots: generator.getActiveBotCount()
+      });
+    }, 250);
+
+    // 4. Run timer
+    activeRunTimer = setTimeout(async () => {
+      clearInterval(statsInterval);
+      await stopStressTest('SUCCESS');
+    }, runSec * 1000);
+
+  } catch (err: any) {
+    logger(`[Platform Error] Stress test aborted: ${err.message}\n`);
+    await stopStressTest('FAILED');
+  }
+});
+
+// POST /api/benchmark/stop
+app.post('/api/benchmark/stop', async (req: Request, res: Response) => {
+  if (!sandbox.isRunning) {
+    return res.status(400).json({ error: 'No stress test is currently running.' });
+  }
+  
+  if (activeRunTimer) {
+    clearTimeout(activeRunTimer);
+    activeRunTimer = null;
+  }
+
+  broadcastToClients('LOG', { text: '[Platform] Manually stopped by administrator.\n' });
+  await stopStressTest('SUCCESS');
+  res.json({ message: 'Stress test terminated manually.' });
+});
+
+// POST /api/benchmark/scale
+app.post('/api/benchmark/scale', (req: Request, res: Response) => {
+  const { botCount, botRate } = req.body;
+  if (!sandbox.isRunning) {
+    return res.status(400).json({ error: 'No active stress test to scale.' });
+  }
+
+  const bots = parseInt(botCount);
+  const rate = parseInt(botRate) || 50;
+
+  if (isNaN(bots) || bots <= 0) {
+    return res.status(400).json({ error: 'Invalid bot count.' });
+  }
+
+  generator.scale(bots, rate);
+  broadcastToClients('LOG', { text: `[Platform] Scaled bot fleet to ${bots} active bots.\n` });
+  res.json({ activeBots: generator.getActiveBotCount() });
+});
+
+async function stopStressTest(status: 'SUCCESS' | 'FAILED') {
+  if (activeRunTimer) {
+    clearTimeout(activeRunTimer);
+    activeRunTimer = null;
+  }
+
+  // 1. Stop bot fleet
+  generator.stop();
+
+  // 2. Capture final telemetry statistics
+  const finalStats = telemetry.getStats();
+
+  // 3. Stop sandbox container
+  await sandbox.stopSandbox((log) => {
+    broadcastToClients('LOG', { text: log });
+  });
+
+  if (activeRunId) {
+    const compositeScore = PlatformDatabase.calculateCompositeScore(
+      finalStats.tps,
+      finalStats.correctnessScore,
+      finalStats.p99Latency
+    );
+
+    const runResult: BenchmarkRun = {
+      id: activeRunId,
+      contestantName: activeRunName,
+      language: activeRunLang,
+      tps: finalStats.tps,
+      p50Latency: finalStats.p50Latency,
+      p90Latency: finalStats.p90Latency,
+      p99Latency: finalStats.p99Latency,
+      correctness: finalStats.correctnessScore,
+      compositeScore,
+      status,
+      duration: activeRunDuration,
+      timestamp: Date.now()
+    };
+
+    // Store in db
+    db.addRun(runResult);
+
+    broadcastToClients('FINISHED', {
+      run: runResult,
+      leaderboard: db.getLeaderboard(),
+      history: db.getRuns()
+    });
+  }
+
+  activeRunId = null;
+  broadcastToClients('STATUS_CHANGE', { isRunning: false });
+}
+
+// Start Server
+const PORT = process.env.PORT || 5050;
+server.listen(PORT, () => {
+  console.log(`IICPC Platform orchestrator listening on port ${PORT}`);
+});

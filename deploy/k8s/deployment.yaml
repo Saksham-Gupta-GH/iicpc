@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: iicpc-bot-fleet
+  namespace: default
+  labels:
+    app: iicpc-bot-fleet
+spec:
+  replicas: 10 # Default to 10 instances, scales dynamically up to 200 via HPA
+  selector:
+    matchLabels:
+      app: iicpc-bot-fleet
+  template:
+    metadata:
+      labels:
+        app: iicpc-bot-fleet
+    spec:
+      containers:
+      - name: bot-runner
+        image: iicpc-bot-fleet-image:latest
+        resources:
+          requests:
+            cpu: "250m"
+            memory: "256Mi"
+          limits:
+            cpu: "1000m"
+            memory: "1024Mi"
+        env:
+        - name: TARGET_URL
+          value: "http://iicpc-contestant-service.default.svc.cluster.local:8080"
+        - name: BOT_RATE
+          value: "100"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: iicpc-bot-fleet-service
+  namespace: default
+spec:
+  selector:
+    app: iicpc-bot-fleet
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 80
+  type: ClusterIP

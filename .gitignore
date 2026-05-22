@@ -1,0 +1,43 @@
+# Dependency directories
+node_modules/
+jspm_packages/
+web_modules/
+
+# Build and distribution directories
+dist/
+build/
+out/
+.next/
+.nuxt/
+.cache/
+
+# Local database and run logs
+backend/iicpc-data.json
+*.log
+task-*.log
+.system_generated/
+.gemini/
+
+# Native matching engine binaries
+contestant-examples/cpp/engine
+contestant-examples/go/engine
+contestant-examples/rust/target/
+engine
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE and Editor files
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
