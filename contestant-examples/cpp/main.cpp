@@ -247,6 +247,17 @@ int main() {
                 return;
             }
 
+            // Print ORDER event to stdout in a thread-safe manner under lock
+            stringstream ss;
+            ss << "{\"type\":\"ORDER\",\"id\":\"" << id 
+               << "\",\"symbol\":\"" << symbol 
+               << "\",\"side\":\"" << side 
+               << "\",\"type\":\"" << type 
+               << "\",\"price\":" << price 
+               << ",\"quantity\":" << quantity 
+               << ",\"timestamp\":" << get_now_ms() << "}\n";
+            cout << ss.str() << flush;
+
             Order order{id, symbol, side, type, price, quantity, 0.0, get_now_ms()};
             match_order(order);
 

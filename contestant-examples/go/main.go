@@ -147,6 +147,8 @@ func matchOrder(order *Order) {
 
 	for _, t := range trades {
 		broadcast(t)
+		msg, _ := json.Marshal(t)
+		fmt.Println(string(msg))
 	}
 }
 
@@ -236,6 +238,26 @@ func handleOrder(w http.ResponseWriter, r *http.Request) {
 		Timestamp: time.Now(),
 	}
 
+	orderEvt := struct {
+		Type      string    `json:"type"`
+		ID        string    `json:"id"`
+		Symbol    string    `json:"symbol"`
+		Side      string    `json:"side"`
+		Price     float64   `json:"price"`
+		Quantity  float64   `json:"quantity"`
+		Timestamp time.Time `json:"timestamp"`
+	}{
+		Type:      "ORDER",
+		ID:        order.ID,
+		Symbol:    order.Symbol,
+		Side:      order.Side,
+		Price:     order.Price,
+		Quantity:  order.Quantity,
+		Timestamp: order.Timestamp,
+	}
+	msg, _ := json.Marshal(orderEvt)
+	fmt.Println(string(msg))
+
 	matchOrder(order)
 
 	w.WriteHeader(http.StatusAccepted)
@@ -288,12 +310,15 @@ func handleCancel(w http.ResponseWriter, r *http.Request) {
 
 	delete(orderMap, req.ID)
 
-	broadcast(Event{
+	cancelEvt := Event{
 		Type:      "CANCEL",
 		Symbol:    req.Symbol,
 		OrderID:   req.ID,
 		Timestamp: time.Now(),
-	})
+	}
+	broadcast(cancelEvt)
+	msg, _ := json.Marshal(cancelEvt)
+	fmt.Println(string(msg))
 
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write([]byte(fmt.Sprintf(`{"status":"CANCELLED","orderId":"%s"}`, req.ID)))

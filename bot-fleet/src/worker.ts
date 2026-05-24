@@ -77,12 +77,7 @@ async function placeOrder() {
   const sentTime = Date.now();
 
   try {
-    // Send order placement to Telemetry Ingester (expected state tracking)
-    parentPort?.postMessage({
-      type: 'ORDER_PLACED',
-      payload: orderPayload
-    });
-
+    // Send order placement to Telemetry Ingester is now handled directly by sandboxed engine stdout sequencing
     const res = await postJson(targetUrl, '/order', orderPayload);
     const latency = Date.now() - sentTime;
 
@@ -123,11 +118,7 @@ async function cancelOldestOrder() {
   const cancelPayload = { id: orderId, symbol: 'BTCUSD' };
 
   try {
-    parentPort?.postMessage({
-      type: 'ORDER_CANCELLED',
-      payload: { id: orderId }
-    });
-
+    // Send order cancellation to Telemetry Ingester is now handled directly by sandboxed engine stdout sequencing
     const res = await postJson(targetUrl, '/cancel', cancelPayload);
     const latency = Date.now() - sentTime;
 

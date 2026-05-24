@@ -3,10 +3,12 @@ import * as http from 'http';
 import WebSocket from 'ws';
 import cors from 'cors';
 import * as path from 'path';
+import * as fs from 'fs';
 import { TelemetryIngester } from './telemetry';
 import { ContestantOrchestrator } from './orchestrator';
 import { LoadGenerator } from '../../bot-fleet/src/generator';
 import { PlatformDatabase, BenchmarkRun } from './database';
+
 
 const app = express();
 app.use(cors());
@@ -67,9 +69,62 @@ app.get('/api/history', (req: Request, res: Response) => {
   res.json(db.getRuns());
 });
 
+// POST /api/upload
+app.post('/api/upload', (req: Request, res: Response) => {
+  const { contestantName, language, code } = req.body;
+
+  if (!contestantName || !language || !code) {
+    return res.status(400).json({ error: 'Missing contestantName, language, or code content.' });
+  }
+
+  const cleanName = contestantName.replace(/[^a-zA-Z0-9_-]/g, '');
+  if (!cleanName) {
+    return res.status(400).json({ error: 'Invalid contestant team name.' });
+  }
+
+  const lang = language.toLowerCase();
+  if (!['js', 'go', 'rust', 'cpp'].includes(lang)) {
+    return res.status(400).json({ error: 'Invalid matching engine language stack.' });
+  }
+
+  try {
+    // 1. Resolve sandboxed upload directory path
+    const uploadDir = path.resolve(__dirname, '..', 'uploads', cleanName, lang);
+    fs.mkdirSync(uploadDir, { recursive: true });
+
+    // 2. Define path to template matching engine resources
+    const templateDir = path.resolve(__dirname, '..', '..', 'contestant-examples', lang);
+
+    // 3. Write uploaded source code to sandboxed directory
+    if (lang === 'js') {
+      fs.writeFileSync(path.join(uploadDir, 'server.js'), code, 'utf-8');
+      fs.copyFileSync(path.join(templateDir, 'Dockerfile'), path.join(uploadDir, 'Dockerfile'));
+      fs.copyFileSync(path.join(templateDir, 'package.json'), path.join(uploadDir, 'package.json'));
+    } else if (lang === 'go') {
+      fs.writeFileSync(path.join(uploadDir, 'main.go'), code, 'utf-8');
+      fs.copyFileSync(path.join(templateDir, 'Dockerfile'), path.join(uploadDir, 'Dockerfile'));
+    } else if (lang === 'cpp') {
+      fs.writeFileSync(path.join(uploadDir, 'main.cpp'), code, 'utf-8');
+      fs.copyFileSync(path.join(templateDir, 'Dockerfile'), path.join(uploadDir, 'Dockerfile'));
+      fs.copyFileSync(path.join(templateDir, 'httplib.h'), path.join(uploadDir, 'httplib.h'));
+    } else if (lang === 'rust') {
+      fs.mkdirSync(path.join(uploadDir, 'src'), { recursive: true });
+      fs.writeFileSync(path.join(uploadDir, 'src', 'main.rs'), code, 'utf-8');
+      fs.copyFileSync(path.join(templateDir, 'Dockerfile'), path.join(uploadDir, 'Dockerfile'));
+      fs.copyFileSync(path.join(templateDir, 'Cargo.toml'), path.join(uploadDir, 'Cargo.toml'));
+    }
+
+    console.log(`[Platform] Successfully stored upload for ${cleanName} in ${lang}`);
+    res.json({ message: 'Matching engine source code uploaded and sandboxed successfully!' });
+  } catch (err: any) {
+    console.error('[Platform Error] Upload failed:', err);
+    res.status(500).json({ error: `Internal upload failed: ${err.message}` });
+  }
+});
+
 // POST /api/benchmark/start
 app.post('/api/benchmark/start', async (req: Request, res: Response) => {
-  const { contestantName, engineType, duration, botCount, botRate } = req.body;
+  const { contestantName, engineType, duration, botCount, botRate, useUploadedCode } = req.body;
 
   if (sandbox.isRunning) {
     return res.status(400).json({ error: 'A stress test is already running!' });
@@ -93,14 +148,25 @@ app.post('/api/benchmark/start', async (req: Request, res: Response) => {
 
   // Resolve contestant source directory path
   let submissionDir = '';
-  if (type === 'go') {
-    submissionDir = path.resolve(__dirname, '..', '..', 'contestant-examples', 'go');
-  } else if (type === 'rust') {
-    submissionDir = path.resolve(__dirname, '..', '..', 'contestant-examples', 'rust');
-  } else if (type === 'cpp') {
-    submissionDir = path.resolve(__dirname, '..', '..', 'contestant-examples', 'cpp');
-  } else {
-    submissionDir = path.resolve(__dirname, '..', '..', 'contestant-examples', 'js');
+  if (useUploadedCode) {
+    const cleanName = name.replace(/[^a-zA-Z0-9_-]/g, '');
+    submissionDir = path.resolve(__dirname, '..', 'uploads', cleanName, type);
+    if (!fs.existsSync(submissionDir)) {
+      console.warn(`[Platform Warning] Upload path not found: ${submissionDir}. Falling back to default.`);
+      useUploadedCode === false;
+    }
+  }
+
+  if (!submissionDir || !fs.existsSync(submissionDir)) {
+    if (type === 'go') {
+      submissionDir = path.resolve(__dirname, '..', '..', 'contestant-examples', 'go');
+    } else if (type === 'rust') {
+      submissionDir = path.resolve(__dirname, '..', '..', 'contestant-examples', 'rust');
+    } else if (type === 'cpp') {
+      submissionDir = path.resolve(__dirname, '..', '..', 'contestant-examples', 'cpp');
+    } else {
+      submissionDir = path.resolve(__dirname, '..', '..', 'contestant-examples', 'js');
+    }
   }
 
   telemetry.reset();

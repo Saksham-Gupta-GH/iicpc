@@ -115,7 +115,9 @@ function matchOrder(order) {
   // Broadcast trades
   for (const trade of trades) {
     broadcast(trade);
+    console.log(JSON.stringify(trade));
   }
+
 
   return true;
 }
@@ -147,6 +149,16 @@ const server = http.createServer((req, res) => {
         }
 
         const order = new Order(id, symbol, side, type, price, quantity);
+        console.log(JSON.stringify({
+          type: 'ORDER',
+          id: order.id,
+          symbol: order.symbol,
+          side: order.side,
+          type: order.type,
+          price: order.price,
+          quantity: order.quantity,
+          timestamp: order.timestamp
+        }));
         matchOrder(order);
 
         res.statusCode = 202;
@@ -183,12 +195,15 @@ const server = http.createServer((req, res) => {
         }
         orderMap.delete(id);
 
-        broadcast({
+        const cancelEvent = {
           type: 'CANCEL',
           symbol,
           orderId: id,
           timestamp: Date.now()
-        });
+        };
+        broadcast(cancelEvent);
+        console.log(JSON.stringify(cancelEvent));
+
 
         res.statusCode = 200;
         res.end(JSON.stringify({ status: 'CANCELLED', orderId: id }));

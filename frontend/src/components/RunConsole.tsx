@@ -20,7 +20,7 @@ interface TelemetryStats {
 
 interface RunConsoleProps {
   isRunning: boolean;
-  onStart: (name: string, type: string, duration: number, bots: number, rate: number) => void;
+  onStart: (name: string, type: string, duration: number, bots: number, rate: number, useUploadedCode: boolean) => void;
   onStop: () => void;
   onScale: (bots: number) => void;
   stats: TelemetryStats | null;
@@ -41,13 +41,16 @@ export const RunConsole: React.FC<RunConsoleProps> = ({
   const [duration, setDuration] = useState(30);
   const [botCount, setBotCount] = useState(10);
   const [botRate, setBotRate] = useState(100);
+  const [useUploadedCode, setUseUploadedCode] = useState(false);
 
   const [tpsHistory, setTpsHistory] = useState<number[]>([]);
-  const terminalEndRef = useRef<HTMLDivElement>(null);
+  const terminalRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll terminal logs
+  // Auto-scroll terminal logs container internally
   useEffect(() => {
-    terminalEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (terminalRef.current) {
+      terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
+    }
   }, [logs]);
 
   // Maintain historical trace of TPS for dynamic SVG graphing
@@ -64,7 +67,7 @@ export const RunConsole: React.FC<RunConsoleProps> = ({
   }, [isRunning, stats]);
 
   const handleStart = () => {
-    onStart(name, engineType, duration, botCount, botRate);
+    onStart(name, engineType, duration, botCount, botRate, useUploadedCode);
   };
 
   const handleScaleChange = (amt: number) => {
@@ -205,6 +208,20 @@ export const RunConsole: React.FC<RunConsoleProps> = ({
             </div>
           </div>
 
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: '0.5rem 0' }}>
+            <input 
+              type="checkbox" 
+              id="useUploadedCode" 
+              checked={useUploadedCode} 
+              onChange={(e) => setUseUploadedCode(e.target.checked)}
+              disabled={isRunning}
+              style={{ cursor: 'pointer', width: '18px', height: '18px', accentColor: 'hsl(var(--accent-purple))' }}
+            />
+            <label htmlFor="useUploadedCode" style={{ fontSize: '0.9rem', fontWeight: 600, color: 'hsl(var(--text-secondary))', cursor: 'pointer' }}>
+              Benchmark custom uploaded code in sandbox
+            </label>
+          </div>
+
           <div style={{ marginTop: '0.5rem' }}>
             {!isRunning ? (
               <button className="btn-primary" style={{ width: '100%', padding: '1rem' }} onClick={handleStart}>
@@ -298,20 +315,24 @@ export const RunConsole: React.FC<RunConsoleProps> = ({
           <span style={{ fontSize: '0.75rem', color: 'hsl(var(--text-muted))' }}>STDERR / STDOUT</span>
         </div>
 
-        <div style={{ 
-          background: 'hsl(var(--bg-base))', 
-          border: '1px solid hsl(var(--border-dim))',
-          borderRadius: '8px',
-          padding: '1rem',
-          flexGrow: 1,
-          maxHeight: '320px',
-          overflowY: 'auto',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '0.25rem',
-          color: '#39ff14', // Matrix green color for high visual impact
-          textShadow: '0 0 2px rgba(57, 255, 20, 0.3)'
-        }} className="mono">
+        <div 
+          ref={terminalRef}
+          style={{ 
+            background: 'hsl(var(--bg-base))', 
+            border: '1px solid hsl(var(--border-dim))',
+            borderRadius: '8px',
+            padding: '1rem',
+            flexGrow: 1,
+            maxHeight: '320px',
+            overflowY: 'auto',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.25rem',
+            color: '#39ff14', // Matrix green color for high visual impact
+            textShadow: '0 0 2px rgba(57, 255, 20, 0.3)'
+          }} 
+          className="mono"
+        >
           {logs.length === 0 ? (
             <div style={{ color: 'hsl(var(--text-muted))' }}>Console offline. Click launch stress test to initiate container deployment...</div>
           ) : (
@@ -321,7 +342,6 @@ export const RunConsole: React.FC<RunConsoleProps> = ({
               </div>
             ))
           )}
-          <div ref={terminalEndRef} />
         </div>
       </div>
 

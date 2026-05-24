@@ -112,6 +112,10 @@ export class ContestantOrchestrator {
               const event = JSON.parse(line.trim());
               if (event.type === 'TRADE') {
                 this.telemetryIngester.recordActualTrade(event);
+              } else if (event.type === 'ORDER') {
+                this.telemetryIngester.recordOrderPlacement(event);
+              } else if (event.type === 'CANCEL') {
+                this.telemetryIngester.recordOrderCancellation(event.orderId || event.id);
               }
             }
           } catch (err) {
@@ -203,6 +207,10 @@ export class ContestantOrchestrator {
               const event = JSON.parse(line.trim());
               if (event.type === 'TRADE') {
                 this.telemetryIngester.recordActualTrade(event);
+              } else if (event.type === 'ORDER') {
+                this.telemetryIngester.recordOrderPlacement(event);
+              } else if (event.type === 'CANCEL') {
+                this.telemetryIngester.recordOrderCancellation(event.orderId || event.id);
               }
             }
           } catch (err) {

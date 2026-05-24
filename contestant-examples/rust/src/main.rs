@@ -92,6 +92,16 @@ impl OrderBook {
 #[derive(Clone, Serialize, Deserialize, Debug)]
 #[serde(tag = "type")]
 enum Event {
+    ORDER {
+        id: String,
+        symbol: String,
+        side: String,
+        #[serde(rename = "type")]
+        order_type: String,
+        price: f64,
+        quantity: f64,
+        timestamp: u64,
+    },
     TRADE {
         symbol: String,
         #[serde(rename = "buyOrderId")]
@@ -238,6 +248,17 @@ async fn handle_order(
         timestamp: now_millis(),
     };
 
+    let order_evt = Event::ORDER {
+        id: order.id.clone(),
+        symbol: order.symbol.clone(),
+        side: order.side.clone(),
+        order_type: order.order_type.clone(),
+        price: order.price,
+        quantity: order.quantity,
+        timestamp: order.timestamp,
+    };
+    println!("{}", serde_json::to_string(&order_evt).unwrap());
+
     let mut trades = Vec::new();
 
     if order.side == "BUY" {
@@ -344,6 +365,7 @@ async fn handle_order(
 
     // Broadcast trades
     for t in trades {
+        println!("{}", serde_json::to_string(&t).unwrap());
         let _ = state.tx.send(t);
     }
 
@@ -408,11 +430,13 @@ async fn handle_cancel(
         }
     }
 
-    let _ = state.tx.send(Event::CANCEL {
+    let cancel_evt = Event::CANCEL {
         symbol: req.symbol,
         order_id: req.id.clone(),
         timestamp: now_millis(),
-    });
+    };
+    println!("{}", serde_json::to_string(&cancel_evt).unwrap());
+    let _ = state.tx.send(cancel_evt);
 
     (
         StatusCode::OK,

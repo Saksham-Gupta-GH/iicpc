@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Leaderboard, LeaderboardEntry } from './components/Leaderboard';
 import { RunConsole } from './components/RunConsole';
+import { SubmitPanel } from './components/SubmitPanel';
 import { AlertCircle, Wifi, WifiOff, Cpu, Award } from 'lucide-react';
 
 interface TelemetryStats {
@@ -115,7 +116,8 @@ const App: React.FC = () => {
     engineType: string,
     duration: number,
     botCount: number,
-    botRate: number
+    botRate: number,
+    useUploadedCode: boolean
   ) => {
     try {
       setErrorMsg(null);
@@ -127,7 +129,8 @@ const App: React.FC = () => {
           engineType,
           duration,
           botCount,
-          botRate
+          botRate,
+          useUploadedCode
         })
       });
 
@@ -220,6 +223,16 @@ const App: React.FC = () => {
         {/* Left Side: Live rankings & upload templates */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
           <Leaderboard entries={leaderboard} />
+
+          <SubmitPanel 
+            defaultContestantName={activeRunDetails?.name || 'Super Trading Systems'}
+            onUploadSuccess={(msg) => {
+              setLogs(prev => [...prev, `[Upload Manager] ${msg}\n`]);
+            }}
+            onUploadError={(msg) => {
+              setErrorMsg(msg);
+            }}
+          />
           
           {/* Submission Info drawer */}
           <div className="glass-card flex-row-center" style={{ gap: '1.5rem', background: 'linear-gradient(135deg, hsl(var(--bg-surface)) 0%, hsl(var(--border-dim) / 0.2) 100%)' }}>
