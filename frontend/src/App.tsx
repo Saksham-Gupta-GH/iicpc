@@ -47,7 +47,7 @@ const App: React.FC = () => {
   }, []);
 
   const connectWS = () => {
-    const wsUrl = `ws://${window.location.hostname}:5050`;
+    const wsUrl = `wss://iicpc-2q06.onrender.com`;
     console.log('[WebSocket] Connecting to:', wsUrl);
     const socket = new WebSocket(wsUrl);
     socketRef.current = socket;
@@ -121,7 +121,7 @@ const App: React.FC = () => {
   ) => {
     try {
       setErrorMsg(null);
-      const res = await fetch('http://localhost:5050/api/benchmark/start', {
+      const res = await fetch('https://iicpc-2q06.onrender.com/api/benchmark/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -145,7 +145,7 @@ const App: React.FC = () => {
 
   const handleStopRun = async () => {
     try {
-      await fetch('http://localhost:5050/api/benchmark/stop', { method: 'POST' });
+      await fetch('https://iicpc-2q06.onrender.com/api/benchmark/stop', { method: 'POST' });
     } catch (err) {
       setErrorMsg('Failed to broadcast stop request.');
     }
@@ -153,7 +153,7 @@ const App: React.FC = () => {
 
   const handleScaleFleet = async (bots: number) => {
     try {
-      await fetch('http://localhost:5050/api/benchmark/scale', {
+      await fetch('https://iicpc-2q06.onrender.com/api/benchmark/scale', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ botCount: bots })
@@ -165,12 +165,12 @@ const App: React.FC = () => {
 
   return (
     <div className="app-container">
-      
+
       {/* Dynamic Header with glow accent */}
-      <header style={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center', 
+      <header style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
         borderBottom: '1px solid var(--border-dim)',
         paddingBottom: '1.5rem',
         marginTop: '1rem'
@@ -219,12 +219,12 @@ const App: React.FC = () => {
 
       {/* Primary Grid Layout */}
       <main className="dashboard-grid">
-        
+
         {/* Left Side: Live rankings & upload templates */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
           <Leaderboard entries={leaderboard} />
 
-          <SubmitPanel 
+          <SubmitPanel
             defaultContestantName={activeRunDetails?.name || 'Super Trading Systems'}
             onUploadSuccess={(msg) => {
               setLogs(prev => [...prev, `[Upload Manager] ${msg}\n`]);
@@ -233,7 +233,7 @@ const App: React.FC = () => {
               setErrorMsg(msg);
             }}
           />
-          
+
           {/* Submission Info drawer */}
           <div className="glass-card flex-row-center" style={{ gap: '1.5rem', background: 'linear-gradient(135deg, hsl(var(--bg-surface)) 0%, hsl(var(--border-dim) / 0.2) 100%)' }}>
             <Award size={48} style={{ color: 'hsl(var(--accent-purple))', flexShrink: 0 }} />
@@ -277,12 +277,12 @@ const App: React.FC = () => {
         </div>
 
         {/* Right Side: Execution Sandbox Console & Telemetry Charts */}
-        <RunConsole 
-          isRunning={isRunning} 
-          onStart={handleStartRun} 
-          onStop={handleStopRun} 
+        <RunConsole
+          isRunning={isRunning}
+          onStart={handleStartRun}
+          onStop={handleStopRun}
           onScale={handleScaleFleet}
-          stats={stats} 
+          stats={stats}
           logs={logs}
         />
       </main>

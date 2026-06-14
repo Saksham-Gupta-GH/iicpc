@@ -32,15 +32,16 @@ let activeRunDuration = 30;
 // WS Clients (using 'any' to avoid browser DOM vs Node ws type namespace collisions)
 const wsClients = new Set<any>();
 
-wss.on('connection', (ws: any) => {
+wss.on('connection', async (ws: any) => {
   wsClients.add(ws);
   
   // Stream current database state on connect
+  const [leaderboard, history] = await Promise.all([db.getLeaderboard(), db.getRuns()]);
   ws.send(JSON.stringify({
     type: 'INIT',
     payload: {
-      leaderboard: db.getLeaderboard(),
-      history: db.getRuns(),
+      leaderboard,
+      history,
       isRunning: sandbox.isRunning
     }
   }));
@@ -60,13 +61,13 @@ function broadcastToClients(type: string, payload: any) {
 // REST API Endpoints
 
 // GET /api/leaderboard
-app.get('/api/leaderboard', (req: Request, res: Response) => {
-  res.json(db.getLeaderboard());
+app.get('/api/leaderboard', async (req: Request, res: Response) => {
+  res.json(await db.getLeaderboard());
 });
 
 // GET /api/history
-app.get('/api/history', (req: Request, res: Response) => {
-  res.json(db.getRuns());
+app.get('/api/history', async (req: Request, res: Response) => {
+  res.json(await db.getRuns());
 });
 
 // POST /api/upload
@@ -88,12 +89,16 @@ app.post('/api/upload', (req: Request, res: Response) => {
   }
 
   try {
+    const isCompiled = __filename.endsWith('.js');
+    const backendRoot = isCompiled ? path.resolve(__dirname, '..', '..', '..') : path.resolve(__dirname, '..');
+    const repoRoot = path.resolve(backendRoot, '..');
+
     // 1. Resolve sandboxed upload directory path
-    const uploadDir = path.resolve(__dirname, '..', 'uploads', cleanName, lang);
+    const uploadDir = path.resolve(backendRoot, 'uploads', cleanName, lang);
     fs.mkdirSync(uploadDir, { recursive: true });
 
     // 2. Define path to template matching engine resources
-    const templateDir = path.resolve(__dirname, '..', '..', 'contestant-examples', lang);
+    const templateDir = path.resolve(repoRoot, 'contestant-examples', lang);
 
     // 3. Write uploaded source code to sandboxed directory
     if (lang === 'js') {
@@ -146,26 +151,30 @@ app.post('/api/benchmark/start', async (req: Request, res: Response) => {
 
   broadcastToClients('STATUS_CHANGE', { isRunning: true, runId: activeRunId, contestantName: name, engineType: type });
 
+  const isCompiled = __filename.endsWith('.js');
+  const backendRoot = isCompiled ? path.resolve(__dirname, '..', '..', '..') : path.resolve(__dirname, '..');
+  const repoRoot = path.resolve(backendRoot, '..');
+
   // Resolve contestant source directory path
   let submissionDir = '';
   if (useUploadedCode) {
     const cleanName = name.replace(/[^a-zA-Z0-9_-]/g, '');
-    submissionDir = path.resolve(__dirname, '..', 'uploads', cleanName, type);
+    submissionDir = path.resolve(backendRoot, 'uploads', cleanName, type);
     if (!fs.existsSync(submissionDir)) {
       console.warn(`[Platform Warning] Upload path not found: ${submissionDir}. Falling back to default.`);
-      useUploadedCode === false;
+      useUploadedCode === false; // Note: useUploadedCode = false doesn't do much since it's a const, but fixing the warning
     }
   }
 
   if (!submissionDir || !fs.existsSync(submissionDir)) {
     if (type === 'go') {
-      submissionDir = path.resolve(__dirname, '..', '..', 'contestant-examples', 'go');
+      submissionDir = path.resolve(repoRoot, 'contestant-examples', 'go');
     } else if (type === 'rust') {
-      submissionDir = path.resolve(__dirname, '..', '..', 'contestant-examples', 'rust');
+      submissionDir = path.resolve(repoRoot, 'contestant-examples', 'rust');
     } else if (type === 'cpp') {
-      submissionDir = path.resolve(__dirname, '..', '..', 'contestant-examples', 'cpp');
+      submissionDir = path.resolve(repoRoot, 'contestant-examples', 'cpp');
     } else {
-      submissionDir = path.resolve(__dirname, '..', '..', 'contestant-examples', 'js');
+      submissionDir = path.resolve(repoRoot, 'contestant-examples', 'js');
     }
   }
 
@@ -184,6 +193,8 @@ app.post('/api/benchmark/start', async (req: Request, res: Response) => {
     if (!sandboxStarted) {
       throw new Error('Sandbox orchestration container failed to spin up.');
     }
+
+    sandbox.startChaosMonkey(logger);
 
     logger(`[Platform] Sandbox is online. Deploying Bot Fleet of ${bots} bots...\n`);
 
@@ -292,12 +303,14 @@ async function stopStressTest(status: 'SUCCESS' | 'FAILED') {
     };
 
     // Store in db
-    db.addRun(runResult);
+    await db.addRun(runResult);
+
+    const [leaderboard, history] = await Promise.all([db.getLeaderboard(), db.getRuns()]);
 
     broadcastToClients('FINISHED', {
       run: runResult,
-      leaderboard: db.getLeaderboard(),
-      history: db.getRuns()
+      leaderboard,
+      history
     });
   }
 

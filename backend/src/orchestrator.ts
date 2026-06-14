@@ -9,6 +9,7 @@ export class ContestantOrchestrator {
   private localProcess: any = null;
   private isDocker = true;
   public isRunning = false;
+  private chaosInterval: NodeJS.Timeout | null = null;
 
   constructor(private telemetryIngester: TelemetryIngester) {}
 
@@ -150,7 +151,7 @@ export class ContestantOrchestrator {
         });
 
         logCallback('[Orchestrator] Spawning native JS matching engine...\n');
-        this.localProcess = spawn('node', ['server.js'], { cwd: submissionDir });
+        this.localProcess = spawn('node', ['--max-old-space-size=64', 'server.js'], { cwd: submissionDir, env: { ...process.env, PORT: '8080' } });
       } else if (isCpp) {
         const httplibPath = path.join(submissionDir, 'httplib.h');
         if (!fs.existsSync(httplibPath)) {
@@ -179,13 +180,13 @@ export class ContestantOrchestrator {
         }
 
         logCallback('[Orchestrator] Spawning native C++ matching engine...\n');
-        this.localProcess = spawn('./engine', [], { cwd: submissionDir });
+        this.localProcess = spawn('./engine', [], { cwd: submissionDir, env: { ...process.env, PORT: '8080' } });
       } else if (isGo) {
         logCallback('[Orchestrator] Spawning native Go matching engine...\n');
-        this.localProcess = spawn('go', ['run', 'main.go'], { cwd: submissionDir });
+        this.localProcess = spawn('go', ['run', 'main.go'], { cwd: submissionDir, env: { ...process.env, PORT: '8080' } });
       } else if (isRust) {
         logCallback('[Orchestrator] Spawning native Rust matching engine...\n');
-        this.localProcess = spawn('cargo', ['run', '--release'], { cwd: submissionDir });
+        this.localProcess = spawn('cargo', ['run', '--release'], { cwd: submissionDir, env: { ...process.env, PORT: '8080' } });
       }
 
       if (!this.localProcess) {
@@ -238,6 +239,7 @@ export class ContestantOrchestrator {
    */
   async stopSandbox(logCallback: (log: string) => void): Promise<void> {
     this.isRunning = false;
+    this.stopChaosMonkey();
 
     if (this.logsProcess) {
       this.logsProcess.kill();
@@ -258,6 +260,31 @@ export class ContestantOrchestrator {
           resolve(true);
         });
       });
+    }
+  }
+
+  public startChaosMonkey(logCallback: (log: string) => void) {
+    if (!this.isDocker || !this.isRunning) return;
+
+    this.chaosInterval = setInterval(() => {
+      // 20% chance to pause container for 500ms
+      if (Math.random() > 0.8) {
+        logCallback('[Chaos Monkey] Triggering CPU stall! Pausing container...\n');
+        exec(`docker pause ${this.containerName}`, () => {
+          setTimeout(() => {
+            exec(`docker unpause ${this.containerName}`, () => {
+              logCallback('[Chaos Monkey] CPU stall resolved. Container unpaused.\n');
+            });
+          }, 500);
+        });
+      }
+    }, 5000); // Check every 5 seconds
+  }
+
+  public stopChaosMonkey() {
+    if (this.chaosInterval) {
+      clearInterval(this.chaosInterval);
+      this.chaosInterval = null;
     }
   }
 }

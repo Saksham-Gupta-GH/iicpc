@@ -1,11 +1,42 @@
 import { parentPort, workerData } from 'worker_threads';
 import * as http from 'http';
+import WebSocket from 'ws';
 
 const { workerId, archetype, targetUrl, targetRate } = workerData;
 
 let isRunning = true;
 let activeOrderIds: string[] = [];
 let priceBasis = 10000.0; // Simulated asset baseline (BTCUSD)
+
+const wsUrl = targetUrl.replace(/^http/, 'ws');
+let wsClient: WebSocket | null = null;
+let useWebSockets = false;
+
+function initWebSocket(): Promise<void> {
+  return new Promise((resolve) => {
+    try {
+      const ws = new WebSocket(wsUrl);
+      
+      ws.on('open', () => {
+        wsClient = ws;
+        useWebSockets = true;
+        resolve();
+      });
+
+      ws.on('error', () => {
+        // Failed to connect WS, fallback to REST
+        resolve();
+      });
+
+      ws.on('close', () => {
+        useWebSockets = false;
+        wsClient = null;
+      });
+    } catch (e) {
+      resolve();
+    }
+  });
+}
 
 // Simple high-speed HTTP client to avoid external overhead
 function postJson(url: string, path: string, bodyObj: any): Promise<{ statusCode: number; body: string }> {
@@ -48,18 +79,13 @@ async function placeOrder() {
   let price = priceBasis + (Math.random() - 0.5) * 50; // Random walk around baseline
   let quantity = Math.round((Math.random() * 5 + 0.1) * 100) / 100;
 
-  // Adapt behavior by archetype
   if (archetype === 'MM') {
-    // Market Maker: tight limit spreads
     price = priceBasis + (side === 'BUY' ? -2.0 : 2.0) - (Math.random() * 3.0);
   } else if (archetype === 'HFT') {
-    // High Frequency Momentum: rapid market / immediate execution
     type = 'MARKET';
   } else if (archetype === 'ARBITRAGE') {
-    // Snipe prices
     price = priceBasis + (side === 'BUY' ? 1.0 : -1.0);
   } else {
-    // Noise Trader: random limit order
     type = Math.random() > 0.8 ? 'MARKET' : 'LIMIT';
   }
 
@@ -77,22 +103,35 @@ async function placeOrder() {
   const sentTime = Date.now();
 
   try {
-    // Send order placement to Telemetry Ingester is now handled directly by sandboxed engine stdout sequencing
-    const res = await postJson(targetUrl, '/order', orderPayload);
+    let success = false;
+    
+    if (useWebSockets && wsClient?.readyState === WebSocket.OPEN) {
+      wsClient.send(JSON.stringify({ action: 'order', payload: orderPayload }));
+      success = true;
+    } else {
+      const res = await postJson(targetUrl, '/order', orderPayload);
+      success = res.statusCode === 202 || res.statusCode === 200;
+    }
+
     const latency = Date.now() - sentTime;
+    if (success) {
+      parentPort?.postMessage({
+        type: 'ORDER_PLACED',
+        payload: orderPayload
+      });
+    }
 
     parentPort?.postMessage({
       type: 'METRIC',
       payload: {
         latency,
-        success: res.statusCode === 202 || res.statusCode === 200,
+        success,
         type: 'ORDER'
       }
     });
 
-    if (type === 'LIMIT' && res.statusCode === 202) {
+    if (type === 'LIMIT' && success) {
       activeOrderIds.push(orderId);
-      // Keep inventory capped
       if (activeOrderIds.length > 50) {
         cancelOldestOrder();
       }
@@ -118,15 +157,29 @@ async function cancelOldestOrder() {
   const cancelPayload = { id: orderId, symbol: 'BTCUSD' };
 
   try {
-    // Send order cancellation to Telemetry Ingester is now handled directly by sandboxed engine stdout sequencing
-    const res = await postJson(targetUrl, '/cancel', cancelPayload);
+    let success = false;
+    
+    if (useWebSockets && wsClient?.readyState === WebSocket.OPEN) {
+      wsClient.send(JSON.stringify({ action: 'cancel', payload: cancelPayload }));
+      success = true;
+    } else {
+      const res = await postJson(targetUrl, '/cancel', cancelPayload);
+      success = res.statusCode === 200;
+    }
+
     const latency = Date.now() - sentTime;
+    if (success) {
+      parentPort?.postMessage({
+        type: 'ORDER_CANCELLED',
+        payload: cancelPayload
+      });
+    }
 
     parentPort?.postMessage({
       type: 'METRIC',
       payload: {
         latency,
-        success: res.statusCode === 200,
+        success,
         type: 'CANCEL'
       }
     });
@@ -144,17 +197,20 @@ async function cancelOldestOrder() {
 }
 
 // Main execution loop
-function run() {
-  // Calculate interval between orders based on targetRate (orders/sec)
+async function run() {
+  await initWebSocket();
+  
   const intervalMs = Math.max(1000 / targetRate, 1);
 
   const loop = setInterval(() => {
     if (!isRunning) {
       clearInterval(loop);
+      if (wsClient) {
+        wsClient.close();
+      }
       return;
     }
 
-    // 10% chance to cancel an order instead of placing, or place order
     if (Math.random() > 0.85 && activeOrderIds.length > 0) {
       cancelOldestOrder();
     } else {
