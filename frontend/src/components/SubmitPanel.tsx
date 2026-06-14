@@ -990,8 +990,6 @@ export const SubmitPanel: React.FC<SubmitPanelProps> = ({
               onChange={(e) => setLanguage(e.target.value)}
             >
               <option value="js">Node.js (Plain JS)</option>
-              <option value="go">Go (1.20 Compiled)</option>
-              <option value="rust">Rust (Cargo Build)</option>
               <option value="cpp">C++17 (GCC Optimized)</option>
             </select>
           </div>

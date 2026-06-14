@@ -173,8 +173,6 @@ export const RunConsole: React.FC<RunConsoleProps> = ({
                 disabled={isRunning}
               >
                 <option value="js">Node.js / JS (Standard)</option>
-                <option value="go">Go (Optimized Channels)</option>
-                <option value="rust">Rust (Ultra-Fast BTreeMap)</option>
                 <option value="cpp">C++ (Standard STL map)</option>
               </select>
             </div>
