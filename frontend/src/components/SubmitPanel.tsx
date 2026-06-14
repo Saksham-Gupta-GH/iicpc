@@ -1072,7 +1072,7 @@ export const SubmitPanel: React.FC<SubmitPanelProps> = ({
         <button 
           onClick={handleSubmit}
           className="btn-primary" 
-          style={{ width: '100%', padding: '1rem', background: 'linear-gradient(135deg, hsl(var(--accent-purple)) 0%, hsl(var(--accent-purple) / 0.8) 100%)' }}
+          style={{ width: '100%', padding: '0.875rem' }}
           disabled={isUploading}
         >
           {isUploading ? (

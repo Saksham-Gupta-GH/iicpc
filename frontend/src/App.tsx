@@ -235,7 +235,7 @@ const App: React.FC = () => {
           />
 
           {/* Submission Info drawer */}
-          <div className="glass-card flex-row-center" style={{ gap: '1.5rem', background: 'linear-gradient(135deg, hsl(var(--bg-surface)) 0%, hsl(var(--border-dim) / 0.2) 100%)' }}>
+          <div className="glass-card flex-row-center" style={{ gap: '1.5rem', background: 'hsl(var(--bg-surface))' }}>
             <Award size={48} style={{ color: 'hsl(var(--accent-purple))', flexShrink: 0 }} />
             <div>
               <h3 style={{ fontSize: '1.1rem', marginBottom: '0.25rem' }}>Hardcore Systems Challenge</h3>

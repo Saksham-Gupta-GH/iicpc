@@ -1,25 +1,25 @@
 :root {
-  /* HSL Color System */
-  --bg-base: 240 10% 3.9%;
-  --bg-surface: 240 10% 6%;
-  --bg-surface-elevated: 240 10% 9%;
-  --border-dim: 240 6% 15%;
-  --border-glow: 260 70% 50%;
+  /* HSL Color System - Google Material Light Theme */
+  --bg-base: 0 0% 98%; /* Very light gray, almost white #f8f9fa */
+  --bg-surface: 0 0% 100%; /* Pure white #ffffff */
+  --bg-surface-elevated: 0 0% 100%; /* Pure white */
+  --border-dim: 210 14% 89%; /* Google border color #dadce0 */
+  --border-glow: 214 82% 51%; /* Google blue */
   
   /* Brand Accents */
-  --accent-blue: 210 100% 50%;
-  --accent-purple: 270 95% 65%;
-  --accent-green: 142 70% 50%;
-  --accent-red: 0 85% 60%;
-  --accent-orange: 25 95% 55%;
+  --accent-blue: 214 82% 51%; /* #1a73e8 */
+  --accent-purple: 214 82% 51%; /* Map purple to blue for consistency */
+  --accent-green: 137 65% 43%; /* Google green #1e8e3e */
+  --accent-red: 5 81% 56%; /* Google red #d93025 */
+  --accent-orange: 35 92% 53%; /* Google yellow/orange #f9ab00 */
   
   /* Text HSL values */
-  --text-primary: 0 0% 98%;
-  --text-secondary: 240 5% 65%;
-  --text-muted: 240 5% 45%;
+  --text-primary: 0 0% 13%; /* Google primary text #202124 */
+  --text-secondary: 210 7% 38%; /* Google secondary text #5f6368 */
+  --text-muted: 210 5% 45%; /* Slightly lighter */
 
-  font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-  color-scheme: dark;
+  font-family: 'Inter', 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', Oxygen, Ubuntu, Cantarell, sans-serif;
+  color-scheme: light;
   background-color: hsl(var(--bg-base));
   color: hsl(var(--text-primary));
   margin: 0;
@@ -31,22 +31,20 @@ body {
   margin: 0;
   min-height: 100vh;
   overflow-x: hidden;
-  background: radial-gradient(circle at 50% -20%, hsl(var(--accent-purple) / 0.12) 0%, transparent 50%),
-              radial-gradient(circle at 10% 80%, hsl(var(--accent-blue) / 0.05) 0%, transparent 40%),
-              hsl(var(--bg-base));
+  background-color: hsl(var(--bg-base));
   background-attachment: fixed;
 }
 
 * {
   box-sizing: border-box;
   scrollbar-width: thin;
-  scrollbar-color: hsl(var(--accent-purple) / 0.3) transparent;
+  scrollbar-color: hsl(var(--border-dim)) transparent;
 }
 
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
@@ -56,7 +54,7 @@ body {
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--accent-purple) / 0.5);
+  background: hsl(var(--text-secondary));
 }
 
 /* Premium Layout utility classes */
@@ -71,104 +69,103 @@ body {
 }
 
 .glass-card {
-  background: linear-gradient(135deg, hsl(var(--bg-surface) / 0.7) 0%, hsl(var(--bg-surface-elevated) / 0.5) 100%);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  background: hsl(var(--bg-surface));
   border: 1px solid hsl(var(--border-dim));
-  border-radius: 16px;
+  border-radius: 8px;
   padding: 1.5rem;
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  box-shadow: 0 1px 2px 0 rgba(60,64,67,0.3), 0 1px 3px 1px rgba(60,64,67,0.15);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
 .glass-card:hover {
-  border-color: hsl(var(--accent-purple) / 0.25);
-  box-shadow: 0 8px 32px 0 rgba(120, 50, 250, 0.05);
+  box-shadow: 0 1px 3px 0 rgba(60,64,67,0.3), 0 4px 8px 3px rgba(60,64,67,0.15);
 }
 
 /* Typography styles */
 h1, h2, h3, h4 {
   margin: 0;
-  font-weight: 700;
-  letter-spacing: -0.02em;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: hsl(var(--text-primary));
 }
 
 .gradient-text {
-  background: linear-gradient(135deg, hsl(var(--text-primary)) 30%, hsl(var(--accent-purple)) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: hsl(var(--text-primary));
 }
 
 /* Micro-animations */
 button {
   cursor: pointer;
   border: none;
-  border-radius: 8px;
-  font-weight: 600;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  border-radius: 4px;
+  font-weight: 500;
+  font-size: 0.875rem;
+  letter-spacing: 0.25px;
+  transition: background-color 0.2s, box-shadow 0.2s;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
+  padding: 0.5rem 1rem;
 }
 
 button:active {
-  transform: scale(0.97);
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, hsl(var(--accent-purple)) 0%, hsl(var(--accent-blue)) 100%);
+  background: hsl(var(--accent-blue));
   color: white;
-  box-shadow: 0 4px 20px 0 hsl(var(--accent-purple) / 0.25);
+  box-shadow: 0 1px 2px 0 rgba(60,64,67,0.3), 0 1px 3px 1px rgba(60,64,67,0.15);
 }
 
 .btn-primary:hover {
-  box-shadow: 0 4px 24px 0 hsl(var(--accent-purple) / 0.4);
-  filter: brightness(1.1);
+  background: hsl(214 82% 45%);
+  box-shadow: 0 1px 3px 0 rgba(60,64,67,0.3), 0 4px 8px 3px rgba(60,64,67,0.15);
 }
 
 .btn-secondary {
-  background: hsl(var(--bg-surface-elevated));
+  background: transparent;
   border: 1px solid hsl(var(--border-dim));
-  color: hsl(var(--text-primary));
+  color: hsl(var(--accent-blue));
 }
 
 .btn-secondary:hover {
-  background: hsl(var(--border-dim));
-  border-color: hsl(var(--text-secondary));
+  background: hsl(var(--accent-blue) / 0.04);
 }
 
 .btn-danger {
-  background: hsl(var(--accent-red) / 0.2);
-  border: 1px solid hsl(var(--accent-red) / 0.4);
+  background: hsl(var(--bg-surface));
+  border: 1px solid hsl(var(--border-dim));
   color: hsl(var(--accent-red));
 }
 
 .btn-danger:hover {
-  background: hsl(var(--accent-red) / 0.3);
-  box-shadow: 0 0 15px 0 hsl(var(--accent-red) / 0.2);
+  background: hsl(var(--accent-red) / 0.04);
 }
 
 /* Form Styles */
 input, select {
-  background: hsl(var(--bg-base));
+  background: hsl(var(--bg-surface));
   border: 1px solid hsl(var(--border-dim));
-  border-radius: 8px;
+  border-radius: 4px;
   padding: 0.75rem 1rem;
   color: hsl(var(--text-primary));
   font-family: inherit;
+  font-size: 0.875rem;
   outline: none;
   transition: border-color 0.2s ease;
 }
 
 input:focus, select:focus {
-  border-color: hsl(var(--accent-purple));
-  box-shadow: 0 0 0 2px hsl(var(--accent-purple) / 0.15);
+  border-color: hsl(var(--accent-blue));
+  border-width: 2px;
+  padding: calc(0.75rem - 1px) calc(1rem - 1px);
 }
 
 /* Monospace fonts for terminal output */
 .mono {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'Roboto Mono', 'JetBrains Mono', monospace;
   font-size: 0.9em;
 }
 
@@ -192,22 +189,22 @@ input:focus, select:focus {
 }
 
 .badge {
-  padding: 0.25rem 0.6rem;
-  border-radius: 9999px;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
   font-size: 0.75rem;
-  font-weight: 700;
+  font-weight: 500;
   text-transform: uppercase;
 }
 
-.badge-blue { background: hsl(var(--accent-blue) / 0.15); color: hsl(var(--accent-blue)); border: 1px solid hsl(var(--accent-blue) / 0.3); }
-.badge-purple { background: hsl(var(--accent-purple) / 0.15); color: hsl(var(--accent-purple)); border: 1px solid hsl(var(--accent-purple) / 0.3); }
-.badge-green { background: hsl(var(--accent-green) / 0.15); color: hsl(var(--accent-green)); border: 1px solid hsl(var(--accent-green) / 0.3); }
-.badge-red { background: hsl(var(--accent-red) / 0.15); color: hsl(var(--accent-red)); border: 1px solid hsl(var(--accent-red) / 0.3); }
-.badge-orange { background: hsl(var(--accent-orange) / 0.15); color: hsl(var(--accent-orange)); border: 1px solid hsl(var(--accent-orange) / 0.3); }
+.badge-blue { background: hsl(var(--accent-blue) / 0.1); color: hsl(var(--accent-blue)); }
+.badge-purple { background: hsl(var(--accent-blue) / 0.1); color: hsl(var(--accent-blue)); }
+.badge-green { background: hsl(var(--accent-green) / 0.1); color: hsl(var(--accent-green)); }
+.badge-red { background: hsl(var(--accent-red) / 0.1); color: hsl(var(--accent-red)); }
+.badge-orange { background: hsl(var(--accent-orange) / 0.1); color: hsl(var(--accent-orange)); }
 
 /* Animation Keyframes */
 @keyframes pulseGlow {
-  0%, 100% { opacity: 0.5; }
+  0%, 100% { opacity: 0.6; }
   50% { opacity: 1; }
 }
 
