@@ -24,6 +24,7 @@ const App: React.FC = () => {
   const [wsConnected, setWsConnected] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
   const [activeRunDetails, setActiveRunDetails] = useState<{ name?: string, lang?: string } | null>(null);
+  const [uploadedLanguage, setUploadedLanguage] = useState<string | null>(null);
 
   // Leaderboard lists
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
@@ -226,8 +227,9 @@ const App: React.FC = () => {
 
           <SubmitPanel
             defaultContestantName={activeRunDetails?.name || 'Super Trading Systems'}
-            onUploadSuccess={(msg) => {
+            onUploadSuccess={(msg, lang) => {
               setLogs(prev => [...prev, `[Upload Manager] ${msg}\n`]);
+              setUploadedLanguage(lang);
             }}
             onUploadError={(msg) => {
               setErrorMsg(msg);
@@ -284,6 +286,7 @@ const App: React.FC = () => {
           onScale={handleScaleFleet}
           stats={stats}
           logs={logs}
+          uploadedLanguage={uploadedLanguage}
         />
       </main>
 

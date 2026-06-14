@@ -3,7 +3,7 @@ import { UploadCloud, Code, FileText, RefreshCw } from 'lucide-react';
 
 interface SubmitPanelProps {
   defaultContestantName: string;
-  onUploadSuccess: (msg: string) => void;
+  onUploadSuccess: (msg: string, lang: string) => void;
   onUploadError: (msg: string) => void;
 }
 
@@ -948,7 +948,7 @@ export const SubmitPanel: React.FC<SubmitPanelProps> = ({
 
       const data = await res.json();
       if (res.ok) {
-        onUploadSuccess(`Sandbox matching engine [${language.toUpperCase()}] uploaded successfully! Activate 'Benchmark custom uploaded code' to test.`);
+        onUploadSuccess(`Sandbox matching engine [${language.toUpperCase()}] uploaded successfully! Activate 'Benchmark custom uploaded code' to test.`, language);
       } else {
         onUploadError(data.error || 'Failed to upload custom solution.');
       }

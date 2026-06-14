@@ -25,6 +25,7 @@ interface RunConsoleProps {
   onScale: (bots: number) => void;
   stats: TelemetryStats | null;
   logs: string[];
+  uploadedLanguage?: string | null;
 }
 
 export const RunConsole: React.FC<RunConsoleProps> = ({
@@ -33,7 +34,8 @@ export const RunConsole: React.FC<RunConsoleProps> = ({
   onStop,
   onScale,
   stats,
-  logs
+  logs,
+  uploadedLanguage
 }) => {
   // Input parameters
   const [name, setName] = useState('Super Trading Systems');
@@ -52,6 +54,14 @@ export const RunConsole: React.FC<RunConsoleProps> = ({
       terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
     }
   }, [logs]);
+
+  // Sync engine type and custom code toggle when an upload succeeds
+  useEffect(() => {
+    if (uploadedLanguage) {
+      setEngineType(uploadedLanguage);
+      setUseUploadedCode(true);
+    }
+  }, [uploadedLanguage]);
 
   // Maintain historical trace of TPS for dynamic SVG graphing
   useEffect(() => {
