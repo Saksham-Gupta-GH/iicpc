@@ -260,7 +260,7 @@ const App: React.FC = () => {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
                       <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{run.contestantName}</span>
                       <span style={{ fontSize: '0.75rem', color: 'hsl(var(--text-muted))' }}>
-                        {run.language.toUpperCase()} • {run.duration}s • {new Date(run.timestamp).toLocaleTimeString()}
+                        {run.language === 'js' ? 'Node.js' : run.language === 'cpp' ? 'C++' : run.language.charAt(0).toUpperCase() + run.language.slice(1)} • {run.duration}s • {new Date(run.timestamp).toLocaleTimeString()}
                       </span>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.25rem' }}>
