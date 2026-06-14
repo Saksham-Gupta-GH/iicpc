@@ -3,7 +3,7 @@ import { UploadCloud, Code, FileText, RefreshCw } from 'lucide-react';
 
 interface SubmitPanelProps {
   defaultContestantName: string;
-  onUploadSuccess: (msg: string) => void;
+  onUploadSuccess: (msg: string, lang: string) => void;
   onUploadError: (msg: string) => void;
 }
 
@@ -948,7 +948,7 @@ export const SubmitPanel: React.FC<SubmitPanelProps> = ({
 
       const data = await res.json();
       if (res.ok) {
-        onUploadSuccess(`Sandbox matching engine [${language.toUpperCase()}] uploaded successfully! Activate 'Benchmark custom uploaded code' to test.`);
+        onUploadSuccess(`Sandbox matching engine [${language.toUpperCase()}] uploaded successfully! Activate 'Benchmark custom uploaded code' to test.`, language);
       } else {
         onUploadError(data.error || 'Failed to upload custom solution.');
       }
@@ -990,8 +990,6 @@ export const SubmitPanel: React.FC<SubmitPanelProps> = ({
               onChange={(e) => setLanguage(e.target.value)}
             >
               <option value="js">Node.js (Plain JS)</option>
-              <option value="go">Go (1.20 Compiled)</option>
-              <option value="rust">Rust (Cargo Build)</option>
               <option value="cpp">C++17 (GCC Optimized)</option>
             </select>
           </div>
@@ -1072,7 +1070,7 @@ export const SubmitPanel: React.FC<SubmitPanelProps> = ({
         <button 
           onClick={handleSubmit}
           className="btn-primary" 
-          style={{ width: '100%', padding: '1rem', background: 'linear-gradient(135deg, hsl(var(--accent-purple)) 0%, hsl(var(--accent-purple) / 0.8) 100%)' }}
+          style={{ width: '100%', padding: '0.875rem' }}
           disabled={isUploading}
         >
           {isUploading ? (

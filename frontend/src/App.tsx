@@ -24,6 +24,7 @@ const App: React.FC = () => {
   const [wsConnected, setWsConnected] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
   const [activeRunDetails, setActiveRunDetails] = useState<{ name?: string, lang?: string } | null>(null);
+  const [uploadedLanguage, setUploadedLanguage] = useState<string | null>(null);
 
   // Leaderboard lists
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
@@ -226,8 +227,9 @@ const App: React.FC = () => {
 
           <SubmitPanel
             defaultContestantName={activeRunDetails?.name || 'Super Trading Systems'}
-            onUploadSuccess={(msg) => {
+            onUploadSuccess={(msg, lang) => {
               setLogs(prev => [...prev, `[Upload Manager] ${msg}\n`]);
+              setUploadedLanguage(lang);
             }}
             onUploadError={(msg) => {
               setErrorMsg(msg);
@@ -235,7 +237,7 @@ const App: React.FC = () => {
           />
 
           {/* Submission Info drawer */}
-          <div className="glass-card flex-row-center" style={{ gap: '1.5rem', background: 'linear-gradient(135deg, hsl(var(--bg-surface)) 0%, hsl(var(--border-dim) / 0.2) 100%)' }}>
+          <div className="glass-card flex-row-center" style={{ gap: '1.5rem', background: 'hsl(var(--bg-surface))' }}>
             <Award size={48} style={{ color: 'hsl(var(--accent-purple))', flexShrink: 0 }} />
             <div>
               <h3 style={{ fontSize: '1.1rem', marginBottom: '0.25rem' }}>Hardcore Systems Challenge</h3>
@@ -258,7 +260,7 @@ const App: React.FC = () => {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
                       <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{run.contestantName}</span>
                       <span style={{ fontSize: '0.75rem', color: 'hsl(var(--text-muted))' }}>
-                        {run.language.toUpperCase()} • {run.duration}s • {new Date(run.timestamp).toLocaleTimeString()}
+                        {run.language === 'js' ? 'Node.js' : run.language === 'cpp' ? 'C++' : run.language.charAt(0).toUpperCase() + run.language.slice(1)} • {run.duration}s • {new Date(run.timestamp).toLocaleTimeString()}
                       </span>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.25rem' }}>
@@ -284,6 +286,7 @@ const App: React.FC = () => {
           onScale={handleScaleFleet}
           stats={stats}
           logs={logs}
+          uploadedLanguage={uploadedLanguage}
         />
       </main>
 

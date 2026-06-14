@@ -10,6 +10,7 @@ export class ContestantOrchestrator {
   private isDocker = true;
   public isRunning = false;
   private chaosInterval: NodeJS.Timeout | null = null;
+  private lastTelemetryLogTime = 0;
 
   constructor(private telemetryIngester: TelemetryIngester) {}
 
@@ -195,17 +196,33 @@ export class ContestantOrchestrator {
         return false;
       }
 
-      // Stream stdout & stderr of local process
-      const handleLogs = (data: Buffer, streamName: string) => {
-        const lines = data.toString().split('\n');
+      let localEngineBuffer = '';
+      let localEngineStderrBuffer = '';
+
+      const handleLogs = (data: Buffer, streamName: string, isStderr: boolean) => {
+        const text = data.toString();
+        let currentBuffer = isStderr ? localEngineStderrBuffer : localEngineBuffer;
+        currentBuffer += text;
+
+        const lines = currentBuffer.split('\n');
+        // The last element is either an empty string (if it ended with \n) or a partial line
+        currentBuffer = lines.pop() || '';
+
+        if (isStderr) {
+          localEngineStderrBuffer = currentBuffer;
+        } else {
+          localEngineBuffer = currentBuffer;
+        }
+
         for (const line of lines) {
           if (!line.trim()) continue;
-          logCallback(`[${streamName}] ${line}\n`);
 
+          let isTelemetryEvent = false;
           // Parse TRADE and CANCEL events in real-time
           try {
             if (line.startsWith('{') && line.includes('"type"')) {
               const event = JSON.parse(line.trim());
+              isTelemetryEvent = true;
               if (event.type === 'TRADE') {
                 this.telemetryIngester.recordActualTrade(event);
               } else if (event.type === 'ORDER') {
@@ -215,13 +232,28 @@ export class ContestantOrchestrator {
               }
             }
           } catch (err) {
-            // Safe ignore
+            isTelemetryEvent = false;
+          }
+
+          if (!isTelemetryEvent) {
+            logCallback(`[${streamName}] ${line}\n`);
+          } else {
+            const now = Date.now();
+            if (now - this.lastTelemetryLogTime > 500) {
+              this.lastTelemetryLogTime = now;
+              logCallback(`[${streamName}] ${line}\n`);
+            }
           }
         }
       };
 
-      this.localProcess.stdout?.on('data', (data: Buffer) => handleLogs(data, 'Local Engine Output'));
-      this.localProcess.stderr?.on('data', (data: Buffer) => handleLogs(data, 'Local Engine Stderr'));
+      this.localProcess.stdout?.on('data', (data: Buffer) => handleLogs(data, 'Local Engine Output', false));
+      this.localProcess.stderr?.on('data', (data: Buffer) => handleLogs(data, 'Local Engine Stderr', true));
+
+      this.localProcess.on('error', (err: Error) => {
+        logCallback(`[Orchestrator] Failed to start native engine: ${err.message}. Ensure the required compiler/runtime (Go, Rust, etc.) is installed on the host server.\n`);
+        this.isRunning = false;
+      });
 
       this.localProcess.on('close', (code: number) => {
         logCallback(`[Orchestrator] Local engine process closed with code: ${code}\n`);

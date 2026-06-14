@@ -24,7 +24,7 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ entries }) => {
       case 'rust': return <span className="badge badge-orange">Rust</span>;
       case 'cpp': return <span className="badge badge-blue">C++</span>;
       case 'go': return <span className="badge badge-purple">Go</span>;
-      default: return <span className="badge badge-green">JS/TS</span>;
+      default: return <span className="badge badge-green">Node.js</span>;
     }
   };
 

@@ -25,6 +25,7 @@ interface RunConsoleProps {
   onScale: (bots: number) => void;
   stats: TelemetryStats | null;
   logs: string[];
+  uploadedLanguage?: string | null;
 }
 
 export const RunConsole: React.FC<RunConsoleProps> = ({
@@ -33,7 +34,8 @@ export const RunConsole: React.FC<RunConsoleProps> = ({
   onStop,
   onScale,
   stats,
-  logs
+  logs,
+  uploadedLanguage
 }) => {
   // Input parameters
   const [name, setName] = useState('Super Trading Systems');
@@ -52,6 +54,14 @@ export const RunConsole: React.FC<RunConsoleProps> = ({
       terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
     }
   }, [logs]);
+
+  // Sync engine type and custom code toggle when an upload succeeds
+  useEffect(() => {
+    if (uploadedLanguage) {
+      setEngineType(uploadedLanguage);
+      setUseUploadedCode(true);
+    }
+  }, [uploadedLanguage]);
 
   // Maintain historical trace of TPS for dynamic SVG graphing
   useEffect(() => {
@@ -105,8 +115,8 @@ export const RunConsole: React.FC<RunConsoleProps> = ({
         {/* Neon Glow filters */}
         <defs>
           <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="hsl(var(--accent-purple))" stopOpacity="0.4" />
-            <stop offset="100%" stopColor="hsl(var(--accent-purple))" stopOpacity="0.0" />
+            <stop offset="0%" style={{ stopColor: 'hsl(var(--accent-purple))', stopOpacity: 0.4 }} />
+            <stop offset="100%" style={{ stopColor: 'hsl(var(--accent-purple))', stopOpacity: 0.0 }} />
           </linearGradient>
         </defs>
         {/* Background Gridlines */}
@@ -122,12 +132,11 @@ export const RunConsole: React.FC<RunConsoleProps> = ({
         {/* Line Path */}
         <polyline
           fill="none"
-          stroke="hsl(var(--accent-purple))"
           strokeWidth="3"
           strokeLinecap="round"
           strokeLinejoin="round"
           points={points}
-          style={{ filter: 'drop-shadow(0px 0px 8px hsl(var(--accent-purple) / 0.5))' }}
+          style={{ stroke: 'hsl(var(--accent-purple))', filter: 'drop-shadow(0px 1px 3px rgba(0,0,0,0.12))' }}
         />
       </svg>
     );
@@ -164,8 +173,6 @@ export const RunConsole: React.FC<RunConsoleProps> = ({
                 disabled={isRunning}
               >
                 <option value="js">Node.js / JS (Standard)</option>
-                <option value="go">Go (Optimized Channels)</option>
-                <option value="rust">Rust (Ultra-Fast BTreeMap)</option>
                 <option value="cpp">C++ (Standard STL map)</option>
               </select>
             </div>
