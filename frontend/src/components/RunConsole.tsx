@@ -115,8 +115,8 @@ export const RunConsole: React.FC<RunConsoleProps> = ({
         {/* Neon Glow filters */}
         <defs>
           <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="hsl(var(--accent-purple))" stopOpacity="0.4" />
-            <stop offset="100%" stopColor="hsl(var(--accent-purple))" stopOpacity="0.0" />
+            <stop offset="0%" style={{ stopColor: 'hsl(var(--accent-purple))', stopOpacity: 0.4 }} />
+            <stop offset="100%" style={{ stopColor: 'hsl(var(--accent-purple))', stopOpacity: 0.0 }} />
           </linearGradient>
         </defs>
         {/* Background Gridlines */}
@@ -132,12 +132,11 @@ export const RunConsole: React.FC<RunConsoleProps> = ({
         {/* Line Path */}
         <polyline
           fill="none"
-          stroke="hsl(var(--accent-purple))"
           strokeWidth="3"
           strokeLinecap="round"
           strokeLinejoin="round"
           points={points}
-          style={{ filter: 'drop-shadow(0px 1px 3px rgba(0,0,0,0.12))' }}
+          style={{ stroke: 'hsl(var(--accent-purple))', filter: 'drop-shadow(0px 1px 3px rgba(0,0,0,0.12))' }}
         />
       </svg>
     );
