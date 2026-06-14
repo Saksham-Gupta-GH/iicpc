@@ -250,6 +250,11 @@ export class ContestantOrchestrator {
       this.localProcess.stdout?.on('data', (data: Buffer) => handleLogs(data, 'Local Engine Output', false));
       this.localProcess.stderr?.on('data', (data: Buffer) => handleLogs(data, 'Local Engine Stderr', true));
 
+      this.localProcess.on('error', (err: Error) => {
+        logCallback(`[Orchestrator] Failed to start native engine: ${err.message}. Ensure the required compiler/runtime (Go, Rust, etc.) is installed on the host server.\n`);
+        this.isRunning = false;
+      });
+
       this.localProcess.on('close', (code: number) => {
         logCallback(`[Orchestrator] Local engine process closed with code: ${code}\n`);
         this.isRunning = false;
