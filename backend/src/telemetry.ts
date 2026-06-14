@@ -25,6 +25,8 @@ export class TelemetryIngester {
   actualTradesMatched = 0;
   totalViolationsCount = 0;
   violations: Array<{ type: string; description: string; timestamp: number }> = [];
+  seenOrders = new Set<string>();
+  seenCancels = new Set<string>();
 
   // Performance metrics
   totalOrders = 0;
@@ -39,6 +41,9 @@ export class TelemetryIngester {
   }
 
   recordOrderPlacement(order: any) {
+    if (this.seenOrders.has(order.id)) return;
+    this.seenOrders.add(order.id);
+
     this.totalOrders++;
     if (!this.startTime) this.startTime = Date.now();
 
@@ -57,6 +62,9 @@ export class TelemetryIngester {
   }
 
   recordOrderCancellation(id: string) {
+    if (this.seenCancels.has(id)) return;
+    this.seenCancels.add(id);
+
     this.totalCancels++;
     this.referenceBook.cancelOrder(id);
   }
@@ -145,6 +153,8 @@ export class TelemetryIngester {
     this.actualTradesMatched = 0;
     this.totalViolationsCount = 0;
     this.violations = [];
+    this.seenOrders.clear();
+    this.seenCancels.clear();
     this.totalOrders = 0;
     this.totalCancels = 0;
     this.startTime = null;

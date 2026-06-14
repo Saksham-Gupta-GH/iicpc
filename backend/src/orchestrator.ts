@@ -195,9 +195,24 @@ export class ContestantOrchestrator {
         return false;
       }
 
-      // Stream stdout & stderr of local process
-      const handleLogs = (data: Buffer, streamName: string) => {
-        const lines = data.toString().split('\n');
+      let localEngineBuffer = '';
+      let localEngineStderrBuffer = '';
+
+      const handleLogs = (data: Buffer, streamName: string, isStderr: boolean) => {
+        const text = data.toString();
+        let currentBuffer = isStderr ? localEngineStderrBuffer : localEngineBuffer;
+        currentBuffer += text;
+
+        const lines = currentBuffer.split('\n');
+        // The last element is either an empty string (if it ended with \n) or a partial line
+        currentBuffer = lines.pop() || '';
+
+        if (isStderr) {
+          localEngineStderrBuffer = currentBuffer;
+        } else {
+          localEngineBuffer = currentBuffer;
+        }
+
         for (const line of lines) {
           if (!line.trim()) continue;
           logCallback(`[${streamName}] ${line}\n`);
@@ -220,8 +235,8 @@ export class ContestantOrchestrator {
         }
       };
 
-      this.localProcess.stdout?.on('data', (data: Buffer) => handleLogs(data, 'Local Engine Output'));
-      this.localProcess.stderr?.on('data', (data: Buffer) => handleLogs(data, 'Local Engine Stderr'));
+      this.localProcess.stdout?.on('data', (data: Buffer) => handleLogs(data, 'Local Engine Output', false));
+      this.localProcess.stderr?.on('data', (data: Buffer) => handleLogs(data, 'Local Engine Stderr', true));
 
       this.localProcess.on('close', (code: number) => {
         logCallback(`[Orchestrator] Local engine process closed with code: ${code}\n`);
