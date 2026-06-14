@@ -1,0 +1,54 @@
+name: IICPC Platform CI/CD
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18.x]
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ matrix.node-version }}
+
+    # 1. Test Backend
+    - name: Install Backend Dependencies
+      working-directory: ./backend
+      run: npm ci
+
+    - name: Typecheck Backend
+      working-directory: ./backend
+      run: npx tsc --noEmit
+
+    # 2. Test Bot Fleet
+    - name: Install Bot Fleet Dependencies
+      working-directory: ./bot-fleet
+      run: npm ci
+
+    - name: Typecheck Bot Fleet
+      working-directory: ./bot-fleet
+      run: npx tsc --noEmit
+
+    # 3. Test Frontend
+    - name: Install Frontend Dependencies
+      working-directory: ./frontend
+      run: npm ci
+
+    - name: Build Frontend (Vite)
+      working-directory: ./frontend
+      run: npm run build
+
+    # 4. Build Sandbox Orchestrator Docker Image
+    - name: Build Platform Server Image
+      run: docker build -f backend/Dockerfile -t iicpc-platform-server ./backend

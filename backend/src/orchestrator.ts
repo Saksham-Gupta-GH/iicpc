@@ -9,6 +9,7 @@ export class ContestantOrchestrator {
   private localProcess: any = null;
   private isDocker = true;
   public isRunning = false;
+  private chaosInterval: NodeJS.Timeout | null = null;
 
   constructor(private telemetryIngester: TelemetryIngester) {}
 
@@ -238,6 +239,7 @@ export class ContestantOrchestrator {
    */
   async stopSandbox(logCallback: (log: string) => void): Promise<void> {
     this.isRunning = false;
+    this.stopChaosMonkey();
 
     if (this.logsProcess) {
       this.logsProcess.kill();
@@ -258,6 +260,31 @@ export class ContestantOrchestrator {
           resolve(true);
         });
       });
+    }
+  }
+
+  public startChaosMonkey(logCallback: (log: string) => void) {
+    if (!this.isDocker || !this.isRunning) return;
+
+    this.chaosInterval = setInterval(() => {
+      // 20% chance to pause container for 500ms
+      if (Math.random() > 0.8) {
+        logCallback('[Chaos Monkey] Triggering CPU stall! Pausing container...\n');
+        exec(`docker pause ${this.containerName}`, () => {
+          setTimeout(() => {
+            exec(`docker unpause ${this.containerName}`, () => {
+              logCallback('[Chaos Monkey] CPU stall resolved. Container unpaused.\n');
+            });
+          }, 500);
+        });
+      }
+    }, 5000); // Check every 5 seconds
+  }
+
+  public stopChaosMonkey() {
+    if (this.chaosInterval) {
+      clearInterval(this.chaosInterval);
+      this.chaosInterval = null;
     }
   }
 }

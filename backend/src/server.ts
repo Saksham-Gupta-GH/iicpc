@@ -32,15 +32,16 @@ let activeRunDuration = 30;
 // WS Clients (using 'any' to avoid browser DOM vs Node ws type namespace collisions)
 const wsClients = new Set<any>();
 
-wss.on('connection', (ws: any) => {
+wss.on('connection', async (ws: any) => {
   wsClients.add(ws);
   
   // Stream current database state on connect
+  const [leaderboard, history] = await Promise.all([db.getLeaderboard(), db.getRuns()]);
   ws.send(JSON.stringify({
     type: 'INIT',
     payload: {
-      leaderboard: db.getLeaderboard(),
-      history: db.getRuns(),
+      leaderboard,
+      history,
       isRunning: sandbox.isRunning
     }
   }));
@@ -60,13 +61,13 @@ function broadcastToClients(type: string, payload: any) {
 // REST API Endpoints
 
 // GET /api/leaderboard
-app.get('/api/leaderboard', (req: Request, res: Response) => {
-  res.json(db.getLeaderboard());
+app.get('/api/leaderboard', async (req: Request, res: Response) => {
+  res.json(await db.getLeaderboard());
 });
 
 // GET /api/history
-app.get('/api/history', (req: Request, res: Response) => {
-  res.json(db.getRuns());
+app.get('/api/history', async (req: Request, res: Response) => {
+  res.json(await db.getRuns());
 });
 
 // POST /api/upload
@@ -185,6 +186,8 @@ app.post('/api/benchmark/start', async (req: Request, res: Response) => {
       throw new Error('Sandbox orchestration container failed to spin up.');
     }
 
+    sandbox.startChaosMonkey(logger);
+
     logger(`[Platform] Sandbox is online. Deploying Bot Fleet of ${bots} bots...\n`);
 
     // 2. Start Bot Load Generator
@@ -292,12 +295,14 @@ async function stopStressTest(status: 'SUCCESS' | 'FAILED') {
     };
 
     // Store in db
-    db.addRun(runResult);
+    await db.addRun(runResult);
+
+    const [leaderboard, history] = await Promise.all([db.getLeaderboard(), db.getRuns()]);
 
     broadcastToClients('FINISHED', {
       run: runResult,
-      leaderboard: db.getLeaderboard(),
-      history: db.getRuns()
+      leaderboard,
+      history
     });
   }
 
