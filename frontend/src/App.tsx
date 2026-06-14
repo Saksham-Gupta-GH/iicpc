@@ -47,7 +47,7 @@ const App: React.FC = () => {
   }, []);
 
   const connectWS = () => {
-    const wsUrl = `ws://${window.location.hostname}:5050`;
+    const wsUrl = `wss://iicpc-2q06.onrender.com`;
     console.log('[WebSocket] Connecting to:', wsUrl);
     const socket = new WebSocket(wsUrl);
     socketRef.current = socket;
@@ -121,7 +121,7 @@ const App: React.FC = () => {
   ) => {
     try {
       setErrorMsg(null);
-      const res = await fetch('http://localhost:5050/api/benchmark/start', {
+      const res = await fetch('https://iicpc-2q06.onrender.com/api/benchmark/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -145,7 +145,7 @@ const App: React.FC = () => {
 
   const handleStopRun = async () => {
     try {
-      await fetch('http://localhost:5050/api/benchmark/stop', { method: 'POST' });
+      await fetch('https://iicpc-2q06.onrender.com/api/benchmark/stop', { method: 'POST' });
     } catch (err) {
       setErrorMsg('Failed to broadcast stop request.');
     }
@@ -153,7 +153,7 @@ const App: React.FC = () => {
 
   const handleScaleFleet = async (bots: number) => {
     try {
-      await fetch('http://localhost:5050/api/benchmark/scale', {
+      await fetch('https://iicpc-2q06.onrender.com/api/benchmark/scale', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ botCount: bots })
